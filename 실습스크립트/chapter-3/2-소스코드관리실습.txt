@@ -20,9 +20,8 @@
     - key 생성 - ssh-keygen -t ed25519 -C "각자의email"
     - github 에 public key 등록
   - 빌드하여 Host 미등록으로 인한 에러 발생 확인
-  - global security 의
-    Git Host Key Verification Configuration 에
-    Accept first connection 설정
+  - Jenkins 설정 > security > Git Host Key Verification Configuration
+    Accept first connection 선택
   - 빌드하여 정상 동작 확인
 
 * Repo 를 2개 설정하여 다른 폴더로 체크아웃
