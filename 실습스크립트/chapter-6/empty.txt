@@ -1,0 +1,189 @@
+Multibranch Pipeline Inline Definition Plugin
+
+Pipeline: GitHub
+
+Github Custom Notification Context SCM Behaviour
+
+설치
+
+
+pipeline {
+    // 어떠한 에이전트에서도 실행 가능함을 표현
+    agent any
+    environment {
+        // jenkins 가 관리하는 도구의 위치는 이와 같이 환경 변수로 저장 가능
+        SONAR_SCANNER_HOME = tool name: 'sonar-scanner', type: 'hudson.plugins.sonar.SonarRunnerInstallation'
+    }
+
+    parameters {
+        booleanParam(defaultValue: false, description: '배포 포함 여부', name: 'INCLUDE_DEPLOY')
+    }
+
+    triggers {
+        issueCommentTrigger('.*test this.*')
+        // githubPush() // GitHub hook trigger for GITScm polling
+    }
+
+    options {
+        buildDiscarder logRotator(artifactDaysToKeepStr: '', artifactNumToKeepStr: '', daysToKeepStr: '5', numToKeepStr: '5')
+        githubProjectProperty(displayName: '', projectUrlStr: 'https://github.com/fastcampus-jenkins/fastcampus-jenkins')
+        skipDefaultCheckout()
+    }
+
+
+    // stages > stage > steps 순으로 구성
+    stages {
+        stage('Checkout') {
+            steps {
+                sh "printenv"
+                checkout scmGit(
+                        branches: [[name: "${BRANCH_NAME}"]],
+                        userRemoteConfigs: [[credentialsId: '750c9d6a-3733-4b06-91e5-779f4e4dbe75', url: 'git@github.com:fastcampus-jenkins/fastcampus-jenkins.git']],
+                        extensions: [[$class: 'SparseCheckoutPaths', sparseCheckoutPaths: [[path: 'projects/spring-app']]]]
+                )
+                echo "WORKSPACE : ${env.WORKSPACE}, GIT BRANCH: ${env.GIT_BRANCH}"
+            }
+        }
+
+        stage('Build') {
+            steps {
+                // script {
+                //     pullRequest.comment('This PR is highly illogical..')
+                // }
+
+                // withGradle 을 하면, Gradle 로그를 해석
+                dir("projects/spring-app") {
+                    withGradle {
+                        sh "./gradlew build"
+                    }
+                }
+                echo "배포 포함 여부 : INCLUDE_DEPLOY  ${INCLUDE_DEPLOY}, env.INCLUDE_DEPLOY ${env.INCLUDE_DEPLOY}, params.INCLUDE_DEPLOY ${params.INCLUDE_DEPLOY}"
+            }
+        }
+
+        // main 과 develop 에서만 sonar-scanner 사용
+        stage('SonarScanner') {
+            when {
+                anyOf { branch 'main'; branch 'develop' }
+            }
+            steps {
+                // sonarqube 환경하에서, 실행
+                withSonarQubeEnv("sonarqube-server") {
+                    sh """
+                    ${env.SONAR_SCANNER_HOME}/bin/sonar-scanner \
+                        -Dsonar.host.url=http://sonarqube:9000 \
+                        -Dsonar.projectKey=sample \
+                        -Dsonar.projectBaseDir=${WORKSPACE}/projects/spring-app
+                  """
+                }
+
+                // quality gate 통과시 까지 대기
+                timeout(time: 1, unit: 'MINUTES') {
+
+                    // Parameter indicates whether to set pipeline to UNSTABLE if Quality Gate fails
+                    // true = set pipeline to UNSTABLE, false = don't
+                    waitForQualityGate abortPipeline: true
+                }
+            }
+        }
+
+       // main 과 develop 에서만 배포 사용
+        stage('Deploy') {
+            when {
+                environment name: 'ALLOW_TO_DEPLOY', value: 'true'
+                anyOf { branch 'main'; branch 'develop' }
+            }
+            steps {
+                build(
+                        job: 'pipeline-deploy',
+                        parameters: [booleanParam(name: 'ARE_YOU_SURE', value: "${env.INCLUDE_DEPLOY}")],
+                        wait: false,
+                        propagate: false
+                )
+            }
+        }
+    }
+
+    // post 는 stage 마다 실행시킬 수도 있고, 전체가 stages가 완료된 다음에 실행 시킬 수도 있음
+    post {
+        always {
+            scanForIssues tool: ktLint(pattern: '**/ktlint/**/*.xml')
+            junit '**/test-results/**/*.xml'
+            jacoco sourcePattern: '**/src/main/kotlin'
+            script {
+                if (env.BRANCH_NAME.start) {
+                    mineRepository()
+                    emailext attachLog: true, body: email_content(), subject: email_subject(), to: 'junoyoon@gmail.com'
+                    slackSend(channel: "#jenkins", message: "${custom_msg(currentBuild.currentResult)}")
+                }
+            }
+        }
+        success {
+            script {
+                if (true) {
+                    archiveArtifacts artifacts: 'projects/spring-app/build/libs/*-SNAPSHOT.jar', followSymlinks: false
+                }
+            }
+        }
+    }
+}
+
+
+// pipeline 바깥쪽 영역은 groovy 사용 가능
+def email_content() {
+    return '''이 이메일은 중요한 것이여!!
+
+${DEFAULT_CONTENT}
+
+'''
+}
+
+def email_subject() {
+    return '빌드통지!! - ${DEFAULT_SUBJECT}'
+}
+
+def groovy_script() {
+        return '''if (BRANCH == "") {
+            return "origin/main 가 빌드 됩니다."
+        } else {
+            return "$BRANCH 가 빌드 됩니다."
+        }'''
+}
+
+def groovy_script_for_jenkinsfile() {
+    return '''
+        def replaced = BRANCH.replace("origin/", "")
+        if (replaced == "") {
+            return "<input name='value' value='main' class='setting-input' type='text'>"
+        } else {
+            return "<input name='value' value='${replaced}' class='setting-input' type='text'>"
+        }'''
+}
+
+def groovy_fallback_script_for_jenkinsfile() {
+    return '''
+       return "<input name='value' value='main' class='setting-input' type='text'>"
+    '''
+}
+
+def custom_msg(status) {
+    return " $status: Job [${env.JOB_NAME}] Logs path: ${env.BUILD_URL}/consoleText"
+}
+
+checkout([
+   $class: 'GitSCM',
+   branches: scm.branches,
+   extensions: scm.extensions + [[$class: 'WipeWorkspace']],
+   userRemoteConfigs: scm.userRemoteConfigs
+])
+
+- Checkout over SSH
+- Sparse Checkout
+
+Github Custom Notification Context SCM BehaviourVersion
+
+- Skip drafts
+- Custom Github Notification Context
+  - Label : jenkis
+
+Orphaned Item Strategy

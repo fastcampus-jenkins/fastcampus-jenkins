@@ -1,17 +1,29 @@
+* 이번 실습은 jenkins 를 public 으로 노출하기 위한 ngrok 필요
+
+  docker run -d --rm --name ngrok --hostname ngrok \
+         -e NGROK_AUTHTOKEN=[ngrok에서 발급받은 auth key] \
+         --network=practice \
+         -p 4040:4040 \
+         ngrok/ngrok:latest http http://jenkins:8080
+
+  http://localhost:4040
+
 * pipeline-pr 초기 구조 생성
 
   - Dashboard > 새 Item
     - Pipeline 선택
     - Item명 : pipeline-pr 지정
 
-* pipeline-deploy 의 jenkins 파일 컨텐트를 일단 복사
+* pipeline-build 의 jenkins 파일 컨텐트를 일단 복사
 
 * 기존 parameter 제거
   - 파일 초반의 properties(...) 제거
 
 * 파일 제일 앞에 Github Pull Request Builder 트리거 추가
 
+
 properties([
+        // https://www.jenkins.io/doc/pipeline/steps/params/pipelinetriggers/
         pipelineTriggers([
                 // PR builder trigger
                 [
@@ -20,7 +32,7 @@ properties([
                         cron: "*/15 * * * *",
                         permitAll     : false,
                         useGitHubHooks: true,
-                        triggerPhrase : 'test this',
+                        triggerPhrase : '(test this|deploy this)',
                         gitHubAuthId  : '[각자의 Github Auth Id]', // Jenkins 설정 > System >  GitHub Pull Request Builder > Auth ID 에서 확인 가능
                         extensions    : [
                                 [
@@ -33,7 +45,8 @@ properties([
         ])
 ])
 
-* 체크아웃 GIT COMMIT HASH 를 ${SHA1} 으로 변경 - stage('Checkout') { .. } 영역을 다음으로 교체
+* 체크아웃 GIT COMMIT HASH 를 ${SHA1} 으로 변경 및 refspec 추가
+  - stage('Checkout') { .. } 영역을 다음으로 교체
 
         stage('Checkout') {
             steps {
@@ -42,6 +55,7 @@ properties([
                         userRemoteConfigs: [[
                             credentialsId: '[각자의github ssh key에 대한 credential id]',
                             url: 'git@github.com:[[본인GITHUB계정]]/fastcampus-jenkins.git']
+                            refspec: '+refs/pull/*:refs/remotes/origin/pr/*' // 이 부분 반드시 추가
                         ],
                         extensions: [[$class: 'SparseCheckoutPaths', sparseCheckoutPaths: [[path: 'projects/spring-app']]]]
                 )
@@ -55,8 +69,6 @@ properties([
                 mineRepository()
                 emailext attachLog: true, body: email_content(), subject: email_subject(), to: 'junoyoon@gmail.com'
                 slackSend channel: "#jenkins", message: "${custom_msg(currentBuild.currentResult)}"
-
-  - post { success { .. } 내의 다음 항목 제거
 
 * 배포 조건 변경 - stage('Deploy') { .. } 를 다음으로 교체
 
@@ -80,7 +92,7 @@ properties([
   - pipeline-deploy > 구성 > Pipeline > Pipeline script from SCM
     - SCM > Git
       - Repository URL : git@github.com:[본인GITHUB계정]/fastcampus-jenkins.git
-      - Credential : Github SSH키선택
-      - Branch Specifier : */main
+      - Credential : Github SSH키선택 (github-ssh 로 했었음)
+      - Branch Specifier : ${SHA1}
     - Script Path : Jenkinsfile-pr
   - 빌드후 로그 확인
