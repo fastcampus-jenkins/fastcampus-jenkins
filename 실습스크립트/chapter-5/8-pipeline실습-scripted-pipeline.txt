@@ -59,6 +59,7 @@ properties([
             //, [$class: 'GitHubPushTrigger']
         ]),
         buildDiscarder(logRotator(artifactDaysToKeepStr: '', artifactNumToKeepStr: '', daysToKeepStr: '5', numToKeepStr: '5')),
+        skipDefaultCheckout(),
         githubProjectProperty(displayName: '', projectUrlStr: 'https://github.com/fastcampus-jenkins/fastcampus-jenkins')
 ])
 
@@ -68,8 +69,7 @@ properties([
             checkout scmGit(
                     branches: [[name: '${BRANCH}']],
                     userRemoteConfigs: [[
-                        // credential id 는 http://localhost:8080/pipeline-syntax/ 에서 checkout step 생성을 통해 확인 가능
-                        credentialsId: '[각자의github ssh key에 대한 credential id]',
+                        credentialsId: 'github-ssh',
                         url: 'git@github.com:[본인GITHUB계정]/fastcampus-jenkins.git']
                     ],
                     extensions: [[$class: 'SparseCheckoutPaths', sparseCheckoutPaths: [[path: 'projects/spring-app']]]]
@@ -103,7 +103,6 @@ properties([
                           -Dsonar.host.url=http://sonarqube:9000 \
                           -Dsonar.projectKey=sample \
                           -Dsonar.projectBaseDir=${WORKSPACE}/projects/spring-app \
-                          -Dsonar.login=[각자의 SonarQube 토큰]
                  """
           }
 

@@ -11,7 +11,9 @@
 
 * 파일 제일 앞에 Github Pull Request Builder 트리거 추가
 
+
 properties([
+        // https://www.jenkins.io/doc/pipeline/steps/params/pipelinetriggers/
         pipelineTriggers([
                 // PR builder trigger
                 [
@@ -56,8 +58,6 @@ properties([
                 emailext attachLog: true, body: email_content(), subject: email_subject(), to: 'junoyoon@gmail.com'
                 slackSend channel: "#jenkins", message: "${custom_msg(currentBuild.currentResult)}"
 
-  - post { success { .. } 내의 다음 항목 제거
-
 * 배포 조건 변경 - stage('Deploy') { .. } 를 다음으로 교체
 
         stage('Deploy') {
@@ -80,7 +80,7 @@ properties([
   - pipeline-deploy > 구성 > Pipeline > Pipeline script from SCM
     - SCM > Git
       - Repository URL : git@github.com:[본인GITHUB계정]/fastcampus-jenkins.git
-      - Credential : Github SSH키선택
-      - Branch Specifier : */main
+      - Credential : Github SSH키선택 (github-ssh 로 했었음)
+      - Branch Specifier : ${SHA1}
     - Script Path : Jenkinsfile-pr
   - 빌드후 로그 확인
