@@ -1,0 +1,96 @@
+
+properties([
+        // https://www.jenkins.io/doc/pipeline/steps/params/pipelinetriggers/
+        pipelineTriggers([
+                // PR builder trigger
+                [
+                        $class        : 'GhprbTrigger',
+                        adminlist     : 'junoyoon',
+                        cron: "*/15 * * * *",
+                        permitAll     : false,
+                        useGitHubHooks: true,
+                        triggerPhrase : '(test this|deploy this)',
+                        gitHubAuthId  : '0e0e7b1f-09c0-4380-bf6c-c07409bd9f99', // Jenkins 설정 > System >  GitHub Pull Request Builder > Auth ID 에서 확인 가능
+                        extensions    : [
+                                [
+                                        $class             : 'GhprbSimpleStatus',
+                                        commitStatusContext: 'jenkins',
+                                        showMatrixStatus   : false
+                                ]
+                        ]
+                ]
+        ])
+])
+
+
+pipeline {
+    // 어떠한 에이전트에서도 실행 가능함을 표현
+    agent any
+
+    options {
+        // 빌드를 5개만 유지
+        buildDiscarder logRotator(artifactDaysToKeepStr: '', artifactNumToKeepStr: '', daysToKeepStr: '5', numToKeepStr: '5')
+        // github 프로젝트 설정
+        githubProjectProperty(displayName: '', projectUrlStr: 'https://github.com/fastcampus-jenkins/fastcampus-jenkins')
+        // 브랜치를 지정하여 체크아웃 할 것이므로, 디폴트 체크아웃 disable
+        skipDefaultCheckout()
+    }
+
+
+    // stages > stage > steps 순으로 구성
+    stages {
+        stage('Checkout') {
+            steps {
+                checkout scmGit(
+                        branches: [[name: '${SHA1}']],
+                        userRemoteConfigs: [[
+                            // credential id 는 http://localhost:8080/pipeline-syntax/ 에서 checkout step 생성을 통해 확인 가능
+                            credentialsId: 'github-ssh',
+                            url: 'git@github.com:fastcampus-jenkins/fastcampus-jenkins.git',
+                            refspec: '+refs/pull/*:refs/remotes/origin/pr/*'
+                        ]],
+                        extensions: [[$class: 'SparseCheckoutPaths', sparseCheckoutPaths: [[path: 'projects/spring-app']]]]
+                )
+            }
+        }
+
+
+        stage('Build') {
+            steps {
+              // dir 은 디렉토리 이동
+              dir("projects/spring-app") {
+                  // withGradle 을 하면, Gradle 로그를 해석
+                  withGradle {
+                       sh "./gradlew build"
+                  }
+              }
+            }
+        }
+
+
+
+        stage('Deploy') {
+            when {
+                expression { return env.ghprbCommentBody.contains("deploy this") }
+            }
+            steps {
+                build(
+                        job: 'pipeline-deploy',
+                        parameters: [booleanParam(name: 'ARE_YOU_SURE', value: "true")],
+                        wait: false,
+                        propagate: false
+                )
+            }
+        }
+    }
+
+    post {
+
+        always {
+            scanForIssues tool: ktLint(pattern: '**/ktlint/**/*.xml')
+            junit '**/test-results/**/*.xml'
+            jacoco sourcePattern: '**/src/main/kotlin'
+        }
+        
+    }
+}
