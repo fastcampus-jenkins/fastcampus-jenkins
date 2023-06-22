@@ -54,8 +54,7 @@ pipeline {
                     ${env.SONAR_SCANNER_HOME}/bin/sonar-scanner \
                         -Dsonar.host.url=http://sonarqube:9000 \
                         -Dsonar.projectKey=sample \
-                        -Dsonar.projectBaseDir=${WORKSPACE}/projects/spring-app \
-                        -Dsonar.login=sqp_62516f0201f5180e699618182af349aacf2591ff
+                        -Dsonar.projectBaseDir=${WORKSPACE}/projects/spring-app 
                   """
                 }
 
