@@ -14,11 +14,11 @@ pipeline {
     parameters {
             booleanParam(defaultValue: true, description: '배포 포함 여부', name: 'INCLUDE_DEPLOY')
     }
+    /*
     triggers {
-        issueCommentTrigger('.*test this.*')
-        // pollSCM '*/10 * * * *' // Poll Scm
-        // githubPush() // GitHub hook trigger for GITScm polling
+        // issueCommentTrigger('.*test this.*')
     }
+    */
 
     options {
         buildDiscarder logRotator(artifactDaysToKeepStr: '', artifactNumToKeepStr: '', daysToKeepStr: '5', numToKeepStr: '5')
