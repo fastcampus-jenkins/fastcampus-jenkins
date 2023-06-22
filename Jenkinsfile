@@ -28,27 +28,13 @@ pipeline {
 
     // stages > stage > steps 순으로 구성
     stages {
-        stage('Checkout') {
-            steps {
-                // 파라미터는 env.BRANCH, params.BRANCH, BRANCH 세가지 방식으로 접근 가능
-                // 환경 변수는 env.ENV, ENV 로 접근 가능
 
-                echo "WORKSPACE : ${env.WORKSPACE}, GIT BRANCH: ${env.GIT_BRANCH}"
-                echo "배포 포함 여부 : INCLUDE_DEPLOY  ${INCLUDE_DEPLOY}, env.INCLUDE_DEPLOY ${env.INCLUDE_DEPLOY}, params.INCLUDE_DEPLOY ${params.INCLUDE_DEPLOY}"
-                checkout scmGit(
-                        branches: [[name: "${BRANCH ?: GIT_BRANCH}"]],
-                        userRemoteConfigs: [[credentialsId: 'cd6a31dc-9989-4dde-a56b-0247320a727f', url: 'git@github.com:fastcampus-jenkins/fastcampus-jenkins.git']],
-                        extensions: [[$class: 'SparseCheckoutPaths', sparseCheckoutPaths: [[path: 'projects/spring-app']]]]
-                )
-                echo "WORKSPACE : ${env.WORKSPACE}, GIT BRANCH: ${env.GIT_BRANCH}"
-            }
-        }
 
         stage('Build') {
             steps {
-                script {
-                    pullRequest.comment('This PR is highly illogical..')
-                }
+                // script {
+                //     pullRequest.comment('This PR is highly illogical..')
+                // }
 
                 // withGradle 을 하면, Gradle 로그를 해석
                 dir("projects/spring-app") {
@@ -136,30 +122,6 @@ ${DEFAULT_CONTENT}
 
 def email_subject() {
     return '빌드통지!! - ${DEFAULT_SUBJECT}'
-}
-
-def groovy_script() {
-        return '''if (BRANCH == "") {
-            return "origin/main 가 빌드 됩니다."
-        } else {
-            return "$BRANCH 가 빌드 됩니다."
-        }'''
-}
-
-def groovy_script_for_jenkinsfile() {
-    return '''
-        def replaced = BRANCH.replace("origin/", "")
-        if (replaced == "") {
-            return "<input name='value' value='main' class='setting-input' type='text'>"
-        } else {
-            return "<input name='value' value='${replaced}' class='setting-input' type='text'>"
-        }'''
-}
-
-def groovy_fallback_script_for_jenkinsfile() {
-    return '''
-       return "<input name='value' value='main' class='setting-input' type='text'>"
-    '''
 }
 
 def custom_msg(status) {
