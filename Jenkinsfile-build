@@ -61,6 +61,7 @@ pipeline {
         }
         
         stage('Checkout') {
+            echo "${BRANCH_NAME}"
             steps {
                 echo "branch ${params.BRANCH}"
                 checkout scmGit(
