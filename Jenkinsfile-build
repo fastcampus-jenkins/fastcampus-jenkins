@@ -20,7 +20,7 @@ pipeline {
         // github 프로젝트 설정
         githubProjectProperty(displayName: '', projectUrlStr: 'https://github.com/fastcampus-jenkins/fastcampus-jenkins')
         // 브랜치를 지정하여 체크아웃 할 것이므로, 디폴트 체크아웃 disable
-        skipDefaultCheckout()
+        // skipDefaultCheckout()
     }
 
     // parameters {
