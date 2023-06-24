@@ -32,7 +32,6 @@ pipeline {
         stage('Prepare') {
             steps {
                 echo "GIT_BRANCH ${GIT_BRANCH}"
-                echo "BRANCH_NAME ${BRANCH_NAME}"
                 script {
                     properties([
                             parameters([
