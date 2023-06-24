@@ -1,20 +1,30 @@
+
 pipeline {
     // 어떠한 에이전트에서도 실행 가능함을 표현
     agent any
+
+    // 환경 변수 지정
+
+    environment {
+        // jenkins 가 관리하는 도구의 위치는 이와 같이 환경 변수로 저장 가능
+        SONAR_SCANNER_HOME = tool name: 'sonar-scanner', type: 'hudson.plugins.sonar.SonarRunnerInstallation'
+    }
+
 
     options {
         // 빌드를 5개만 유지
         buildDiscarder logRotator(artifactDaysToKeepStr: '', artifactNumToKeepStr: '', daysToKeepStr: '5', numToKeepStr: '5')
         // github 프로젝트 설정
         githubProjectProperty(displayName: '', projectUrlStr: 'https://github.com/fastcampus-jenkins/fastcampus-jenkins')
-        // 브랜치를 지정하여 체크아웃 할 것이므로, 디폴트 체크아웃 disable
-        skipDefaultCheckout()
     }
+
 
     // stages > stage > steps 순으로 구성
     stages {
         stage('Prepare') {
             steps {
+                // 어떤 환경변수가 주입되는지 확인
+                sh "printenv"
                 script {
                     
                     properties([
@@ -38,25 +48,11 @@ pipeline {
                                             ]
                                     ]
                             ])
-                    ])                      
+                    ])
                 }
             }
         }
-        
-        stage('Checkout') {
-            steps {
-                checkout scmGit(
-                        branches: [[name: "${SHA1}"]],
-                        userRemoteConfigs: [[
-                            // credential id 는 http://localhost:8080/pipeline-syntax/ 에서 checkout step 생성을 통해 확인 가능
-                            credentialsId: 'github-ssh',
-                            url: 'git@github.com:fastcampus-jenkins/fastcampus-jenkins.git',
-                            refspec: '+refs/pull/*:refs/remotes/origin/pr/*' // 이 부분 반드시 추가
-                        ]],
-                        extensions: [[$class: 'SparseCheckoutPaths', sparseCheckoutPaths: [[path: 'projects/spring-app']]]]
-                )
-            }
-        }
+       
 
         stage('Build') {
             steps {
@@ -71,16 +67,19 @@ pipeline {
         }
     }
 
+    // post 는 stage 마다 실행시킬 수도 있고, 전체 stages가 완료된 다음에 실행 시킬 수도 있음
     post {
         always {
             scanForIssues tool: ktLint(pattern: '**/ktlint/**/*.xml')
             junit '**/test-results/**/*.xml'
             jacoco sourcePattern: '**/src/main/kotlin'
+
         }
 
         success {
+            
             script {
-                if ((env.ghprbCommentBody ?: "").contains("deploy this"))  {
+                if ((env.ghprbCommentBody ?: "").contains("deploy this")) {
                     archiveArtifacts artifacts: 'projects/spring-app/build/libs/*-SNAPSHOT.jar'
                     build(
                            job: 'pipeline-deploy',
@@ -93,4 +92,5 @@ pipeline {
         }
     }
 }
+
 
