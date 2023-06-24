@@ -7,6 +7,7 @@ pipeline {
     environment {
         // jenkins 가 관리하는 도구의 위치는 이와 같이 환경 변수로 저장 가능
         SONAR_SCANNER_HOME = tool name: 'sonar-scanner', type: 'hudson.plugins.sonar.SonarRunnerInstallation'
+        BRANCH_NAME = "$GIT_BRANCH"
     }
 
     triggers {
@@ -75,7 +76,7 @@ pipeline {
 
         stage('SonarScanner') {
             when {
-                environment name: "GIT_BRANCH", value : "origin/main"
+                branch "**/main"
             }
             steps {
                 // sonarqube 환경하에서, 실행
