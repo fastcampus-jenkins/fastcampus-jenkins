@@ -31,6 +31,8 @@ pipeline {
     stages {
         stage('Prepare') {
             steps {
+                echo "${GIT_BRANCH}"
+                echo "${BRANCH_NAME}"
                 script {
                     properties([
                             parameters([
@@ -60,22 +62,6 @@ pipeline {
             }
         }
         
-        stage('Checkout') {
-            steps {
-
-            echo "${GIT_BRANCH}"
-                echo "branch ${params.BRANCH}"
-                checkout scmGit(
-                        branches: [[name: "${params.BRANCH}"]],
-                        userRemoteConfigs: [[
-                            // credential id 는 http://localhost:8080/pipeline-syntax/ 에서 checkout step 생성을 통해 확인 가능
-                            credentialsId: 'github-ssh',
-                            url: 'git@github.com:fastcampus-jenkins/fastcampus-jenkins.git']
-                        ],
-                        extensions: [[$class: 'SparseCheckoutPaths', sparseCheckoutPaths: [[path: 'projects/spring-app']]]]
-                )
-            }
-        }
 
         stage('Build') {
             steps {
@@ -91,11 +77,7 @@ pipeline {
 
         stage('SonarScanner') {
             when {
-                expression {
-                    // GIT_BRANCH 또는 BRANCH_NAME 는 Jenkinsfile 을 git 으로부터 checkout 할때만 사용 가능
-                    // 대신 파라미터로 받는 BRANCH 활용
-                    return params.BRANCH == "origin/main"
-                }
+                branch "main"
             }
             steps {
                 // sonarqube 환경하에서, 실행
