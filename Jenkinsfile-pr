@@ -1,4 +1,25 @@
-
+properties([
+        // https://www.jenkins.io/doc/pipeline/steps/params/pipelinetriggers/
+        pipelineTriggers([
+                // PR builder trigger
+                [
+                        $class        : 'GhprbTrigger',
+                        adminlist     : 'junoyoon',
+                        cron: "*/15 * * * *",
+                        permitAll     : false,
+                        useGitHubHooks: true,
+                        triggerPhrase : '.*(test this|build this|deploy this).*',
+                        gitHubAuthId  : '0e0e7b1f-09c0-4380-bf6c-c07409bd9f99', // Jenkins 설정 > System >  GitHub Pull Request Builder > Auth ID 에서 확인 가능
+                        extensions    : [
+                                [
+                                        $class             : 'GhprbSimpleStatus',
+                                        commitStatusContext: 'jenkins',
+                                        showMatrixStatus   : false
+                                ]
+                        ]
+                ]
+        ])
+])
 pipeline {
     // 어떠한 에이전트에서도 실행 가능함을 표현
     agent any
@@ -21,38 +42,7 @@ pipeline {
 
     // stages > stage > steps 순으로 구성
     stages {
-        stage('Prepare') {
-            steps {
-                // 어떤 환경변수가 주입되는지 확인
-                sh "printenv"
-                script {
-                    
-                    properties([
-                            // https://www.jenkins.io/doc/pipeline/steps/params/pipelinetriggers/
-                            pipelineTriggers([
-                                    // PR builder trigger
-                                    [
-                                            $class        : 'GhprbTrigger',
-                                            adminlist     : 'junoyoon',
-                                            cron: "*/15 * * * *",
-                                            permitAll     : false,
-                                            useGitHubHooks: true,
-                                            triggerPhrase : '.*(test this|build this|deploy this).*',
-                                            gitHubAuthId  : '0e0e7b1f-09c0-4380-bf6c-c07409bd9f99', // Jenkins 설정 > System >  GitHub Pull Request Builder > Auth ID 에서 확인 가능
-                                            extensions    : [
-                                                    [
-                                                            $class             : 'GhprbSimpleStatus',
-                                                            commitStatusContext: 'jenkins',
-                                                            showMatrixStatus   : false
-                                                    ]
-                                            ]
-                                    ]
-                            ])
-                    ])
-                }
-            }
-        }
-       
+
 
         stage('Build') {
             steps {
