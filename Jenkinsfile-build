@@ -19,8 +19,6 @@ pipeline {
         buildDiscarder logRotator(artifactDaysToKeepStr: '', artifactNumToKeepStr: '', daysToKeepStr: '5', numToKeepStr: '5')
         // github 프로젝트 설정
         githubProjectProperty(displayName: '', projectUrlStr: 'https://github.com/fastcampus-jenkins/fastcampus-jenkins')
-        // 브랜치를 지정하여 체크아웃 할 것이므로, 디폴트 체크아웃 disable
-        // skipDefaultCheckout()
     }
 
     // parameters {
@@ -32,6 +30,7 @@ pipeline {
         stage('Prepare') {
             steps {
                 echo "GIT_BRANCH ${GIT_BRANCH}"
+                sh "printenv"
                 script {
                     properties([
                             parameters([
