@@ -75,7 +75,7 @@ pipeline {
 
         stage('SonarScanner') {
             when {
-                branch "*/main"
+                branch "**/main"
             }
             steps {
                 // sonarqube 환경하에서, 실행
