@@ -1,0 +1,62 @@
+* jenkins kubernetes 로 이동
+  - http://[jenkins-public-ip]:8080/manage/configureClouds/
+  - Pod Template > Add Pod Template
+    - Name : gradle:7.6.1-jdk17
+    - Label : gradle:7.6.1-jdk17
+    - Add Container
+      - Name : gradle
+      - Docker image : gradle:7.6.1-jdk17
+    - Add Volumes
+      - Host path : /gradle-dep
+      - Mount path : /root/.gradle/
+  - Pod Template > Add Pod Template
+    - Name : kaniko
+    - Label : kaniko
+    - Add Container
+      - Name : kaniko
+      - Docker image : gcr.io/kaniko-project/executor:debug
+    - 저장
+
+- 파이프라인을 만들고 테스트
+
+// Uses Declarative syntax to run commands inside a container.
+pipeline {
+    agent {
+        kubernetes {
+            inheritFrom "gradle:7.6.1-jdk17 kaniko"
+        }
+    }
+    stages {
+        stage('gradle') {
+            steps {
+                container("gradle") {
+                     sh 'hostname'
+                }
+
+                container("kaniko") {
+                     sh 'hostname'
+                }
+            }
+        }
+    }
+}
+
+* multibranch pipeline 구성
+  - Item 생성
+    - Item Name : fastcampus-jenkins-build
+    - Multibranch pipeline
+  - Branch Sources > Add Source > Github
+    - Credential
+      - Add > Jenkins >
+        - Username : github 계정
+        - Password : github secret token 입력
+          - 만약 아직 personal access token 발급 받지 않았다면, 다음으로 이동하여 발급
+          - https://github.com/settings/tokens
+             - 필요 권한 - repo, admin:repo_hook
+        - ID : github-id-and-personal-access-token
+        - Description : github-id-and-personal-access-token
+        - Add 클릭
+      - Add > Jenkins > github-id-and-personal-access-token 선택
+      - Repository HTTPS URL : https://github.com/[각자의계정]/fastcampus-jenkins
+      - Validate 클릭하여 접근 권한 확인
+
