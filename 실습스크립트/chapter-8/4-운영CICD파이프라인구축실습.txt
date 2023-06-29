@@ -1,0 +1,37 @@
+* 운영용 agent 설치
+  - Permanent Agent 추가
+    - Jenkins 관리 > Nodes and Clouds
+      - New 노드
+        - 노드명 : prod-agent
+        - Permanent Agent
+        - Create 클릭
+        - Remote root directory : /home/ec2-user
+        - Label: prod-agent
+        - Usage : Only build jobs.. 선택
+        - Launch methods : - Launch method : Launch agents via SSH
+          - Host :
+            - chapter-7-2 에서 만들었던 vm private DNS 명을 입력하거나,
+            - 아니면 현재 jenkins controller 서버 private DNS 명 입력
+            - 해당 서버에 java11 이상 깔려야 함. 깔려 있지 않다면 설치
+              sudo yum install -y java-17-amazon-corretto.x86_64
+          - Credentials > ec2-user-ssh 선택
+          - Host Key Verification Strategy : Non verifying 선택...
+        - 저장
+        - Launch Agent
+
+* promotion pipeline 설정
+  - Item 생성
+    - Item Name : fastcampus-jenkins-1-promotion
+    - Multibranch pipeline
+
+  - Pipeline 입력
+    - 4-1-fastcampus-jenkins-1-promotion.txt 의 내용을 입력
+    - 다음 부분을 각자에 맞게 변경
+
+    environment {
+        TARGET_SERVER_STAGING = "여기에 STAGING 서버 입력"
+        TARGET_SERVER_PROD = "여기에 PROD 서버 입력"
+    }
+
+  - 빌드후 agent 선정 / build description 변화 / stage, prod 배포 / archiving 된 파일 / input 확인
+
